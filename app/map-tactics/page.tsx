@@ -1,13 +1,14 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
-import { ArrowLeft, Map, Clock, Target, Zap, TreePine, Crown, Flame } from "lucide-react"
+import { ArrowLeft, Map, Clock, Target, Zap, TreePine, Crown, Flame, Shield, Sword, Gem, Star } from "lucide-react"
 import Link from "next/link"
 
 const heroes = [
@@ -24,11 +25,11 @@ const heroes = [
 ]
 
 const jungleCreeps = [
-  { id: 1, name: "Blue Buff", x: 20, y: 30, respawn: 90, gold: 60, exp: 80 },
-  { id: 2, name: "Red Buff", x: 80, y: 70, respawn: 90, gold: 60, exp: 80 },
-  { id: 3, name: "Lithowanderer", x: 50, y: 50, respawn: 45, gold: 40, exp: 60 },
-  { id: 4, name: "Rockursa", x: 30, y: 60, respawn: 45, gold: 35, exp: 50 },
-  { id: 5, name: "Firetooth", x: 70, y: 40, respawn: 45, gold: 35, exp: 50 },
+  { id: 1, name: "Blue Buff", x: 20, y: 30, respawn: 90, gold: 60, exp: 80, type: "buff", icon: Shield, color: "blue" },
+  { id: 2, name: "Red Buff", x: 80, y: 70, respawn: 90, gold: 60, exp: 80, type: "buff", icon: Sword, color: "red" },
+  { id: 3, name: "Lithowanderer", x: 50, y: 50, respawn: 45, gold: 40, exp: 60, type: "neutral", icon: Gem, color: "purple" },
+  { id: 4, name: "Rockursa", x: 30, y: 60, respawn: 45, gold: 35, exp: 50, type: "neutral", icon: TreePine, color: "green" },
+  { id: 5, name: "Firetooth", x: 70, y: 40, respawn: 45, gold: 35, exp: 50, type: "neutral", icon: Flame, color: "orange" },
 ]
 
 const rotationPaths = {
@@ -50,27 +51,38 @@ const rotationPaths = {
 }
 
 const mapObjectives = [
-  { id: 1, name: "Turtle", x: 50, y: 65, respawn: 180, reward: "Gold & EXP Boost" },
-  { id: 2, name: "Lord", x: 50, y: 20, respawn: 420, reward: "Lane Push Power" },
-  { id: 3, name: "Crab", x: 35, y: 45, respawn: 90, reward: "Vision & Gold" },
-  { id: 4, name: "Crab", x: 65, y: 55, respawn: 90, reward: "Vision & Gold" },
+  { id: 1, name: "Turtle", x: 50, y: 65, respawn: 180, reward: "Gold & EXP Boost", icon: Shield, color: "emerald", priority: "high" },
+  { id: 2, name: "Lord", x: 50, y: 20, respawn: 420, reward: "Lane Push Power", icon: Crown, color: "gold", priority: "critical" },
+  { id: 3, name: "Crab", x: 35, y: 45, respawn: 90, reward: "Vision & Gold", icon: Star, color: "cyan", priority: "medium" },
+  { id: 4, name: "Crab", x: 65, y: 55, respawn: 90, reward: "Vision & Gold", icon: Star, color: "cyan", priority: "medium" },
 ]
 
 export default function MapTacticsPage() {
-  const [selectedHero, setSelectedHero] = useState<string>("Ling")
-  const [gamePhase, setGamePhase] = useState<string>("Early Game (0-5min)")
-  const [timeSlider, setTimeSlider] = useState([5])
-  const [showPaths, setShowPaths] = useState(true)
-  const [showObjectives, setShowObjectives] = useState(true)
-  const [showJungle, setShowJungle] = useState(true)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Initialize state from URL params
+  const [selectedHero, setSelectedHero] = useState<string>(searchParams.get("hero") || "Ling")
+  const [gamePhase, setGamePhase] = useState<string>(searchParams.get("phase") || "Early Game (0-5min)")
+  const [timeSlider, setTimeSlider] = useState([parseInt(searchParams.get("time") || "5")])
+  const [showPaths, setShowPaths] = useState(searchParams.get("paths") !== "false")
+  const [showObjectives, setShowObjectives] = useState(searchParams.get("objectives") !== "false")
+  const [showJungle, setShowJungle] = useState(searchParams.get("jungle") !== "false")
 
   // View transform state
-  const [scale, setScale] = useState(1)
-  const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(parseFloat(searchParams.get("scale") || "1"))
+  const [translate, setTranslate] = useState({ 
+    x: parseFloat(searchParams.get("x") || "0"), 
+    y: parseFloat(searchParams.get("y") || "0") 
+  })
   const [isPanning, setIsPanning] = useState(false)
   const lastPanPoint = useRef<{ x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [cursorPct, setCursorPct] = useState<{ x: number; y: number } | null>(null)
+  
+  // Touch gesture state
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
+  const [lastTouchCenter, setLastTouchCenter] = useState<{ x: number; y: number } | null>(null)
 
   const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
@@ -134,13 +146,156 @@ export default function MapTacticsPage() {
     lastPanPoint.current = null
   }, [])
 
+  // Touch gesture handlers
+  const getTouchDistance = useCallback((touches: TouchList) => {
+    if (touches.length < 2) return 0
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }, [])
+
+  const getTouchCenter = useCallback((touches: TouchList) => {
+    if (touches.length === 0) return { x: 0, y: 0 }
+    if (touches.length === 1) return { x: touches[0].clientX, y: touches[0].clientY }
+    
+    const x = (touches[0].clientX + touches[1].clientX) / 2
+    const y = (touches[0].clientY + touches[1].clientY) / 2
+    return { x, y }
+  }, [])
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    if (e.touches.length === 1) {
+      setIsPanning(true)
+      lastPanPoint.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    } else if (e.touches.length === 2) {
+      setLastTouchDistance(getTouchDistance(e.touches))
+      setLastTouchCenter(getTouchCenter(e.touches))
+    }
+  }, [getTouchDistance, getTouchCenter])
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    
+    if (e.touches.length === 1 && isPanning && lastPanPoint.current) {
+      const dx = e.touches[0].clientX - lastPanPoint.current.x
+      const dy = e.touches[0].clientY - lastPanPoint.current.y
+      setTranslate((t) => ({ x: t.x + dx, y: t.y + dy }))
+      lastPanPoint.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    } else if (e.touches.length === 2 && lastTouchDistance && lastTouchCenter) {
+      const currentDistance = getTouchDistance(e.touches)
+      const currentCenter = getTouchCenter(e.touches)
+      
+      // Pinch to zoom
+      if (currentDistance !== lastTouchDistance) {
+        const scaleChange = currentDistance / lastTouchDistance
+        const newScale = clamp(scale * scaleChange, 0.6, 3)
+        
+        // Zoom to center of pinch
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect()
+          const centerX = currentCenter.x - rect.left
+          const centerY = currentCenter.y - rect.top
+          
+          const scaleRatio = newScale / scale
+          const newTranslate = {
+            x: centerX - scaleRatio * (centerX - translate.x),
+            y: centerY - scaleRatio * (centerY - translate.y),
+          }
+          
+          setScale(newScale)
+          setTranslate(newTranslate)
+        }
+      }
+      
+      // Two-finger pan
+      const dx = currentCenter.x - lastTouchCenter.x
+      const dy = currentCenter.y - lastTouchCenter.y
+      setTranslate((t) => ({ x: t.x + dx, y: t.y + dy }))
+      
+      setLastTouchDistance(currentDistance)
+      setLastTouchCenter(currentCenter)
+    }
+  }, [isPanning, scale, translate, lastTouchDistance, lastTouchCenter, getTouchDistance, getTouchCenter])
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsPanning(false)
+      lastPanPoint.current = null
+      setLastTouchDistance(null)
+      setLastTouchCenter(null)
+    } else if (e.touches.length === 1) {
+      setLastTouchDistance(null)
+      setLastTouchCenter(null)
+    }
+  }, [])
+
+  // URL persistence
+  const updateURL = useCallback((updates: Record<string, string | number | boolean>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === true || value === false) {
+        params.set(key, value.toString())
+      } else {
+        params.set(key, value.toString())
+      }
+    })
+    
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
+  // Update URL when state changes
+  useEffect(() => {
+    updateURL({
+      hero: selectedHero,
+      phase: gamePhase,
+      time: timeSlider[0],
+      paths: showPaths,
+      objectives: showObjectives,
+      jungle: showJungle,
+      scale: scale,
+      x: translate.x,
+      y: translate.y
+    })
+  }, [selectedHero, gamePhase, timeSlider, showPaths, showObjectives, showJungle, scale, translate, updateURL])
+
   const transformStyle = useMemo(() => ({
     transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
     transformOrigin: "0 0",
   }), [scale, translate])
 
-  const currentRotations = rotationPaths[gamePhase as keyof typeof rotationPaths] || []
-  const heroRotation = currentRotations.find((r) => r.hero === selectedHero)
+  // Memoized derived state
+  const currentRotations = useMemo(() => 
+    rotationPaths[gamePhase as keyof typeof rotationPaths] || [], 
+    [gamePhase]
+  )
+  
+  const heroRotation = useMemo(() => 
+    currentRotations.find((r) => r.hero === selectedHero), 
+    [currentRotations, selectedHero]
+  )
+
+  // Memoized color classes
+  const jungleColorClasses = useMemo(() => ({
+    blue: "bg-blue-500/20 border-blue-500 text-blue-500",
+    red: "bg-red-500/20 border-red-500 text-red-500",
+    purple: "bg-purple-500/20 border-purple-500 text-purple-500",
+    green: "bg-green-500/20 border-green-500 text-green-500",
+    orange: "bg-orange-500/20 border-orange-500 text-orange-500"
+  }), [])
+
+  const objectiveColorClasses = useMemo(() => ({
+    emerald: "bg-emerald-500/20 border-emerald-500 text-emerald-500",
+    gold: "bg-yellow-500/20 border-yellow-500 text-yellow-500",
+    cyan: "bg-cyan-500/20 border-cyan-500 text-cyan-500"
+  }), [])
+
+  const priorityClasses = useMemo(() => ({
+    critical: "ring-2 ring-yellow-400/50 animate-pulse",
+    high: "ring-2 ring-emerald-400/50",
+    medium: ""
+  }), [])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -301,12 +456,15 @@ export default function MapTacticsPage() {
               <CardContent className="h-full p-6">
                 <div
                   ref={containerRef}
-                  className="relative w-full h-full bg-gradient-to-br from-chart-4/20 to-chart-3/20 rounded-lg border-2 border-border overflow-hidden cursor-grab"
+                  className="relative w-full h-full bg-gradient-to-br from-chart-4/20 to-chart-3/20 rounded-lg border-2 border-border overflow-hidden cursor-grab touch-none"
                   onWheel={onWheel}
                   onMouseDown={onMouseDown}
                   onMouseMove={onMouseMove}
                   onMouseUp={endPan}
                   onMouseLeave={endPan}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
                 >
                   {/* Map Background */}
                   <div className="absolute inset-0" style={transformStyle}>
@@ -326,47 +484,58 @@ export default function MapTacticsPage() {
 
                   {/* Jungle Camps */}
                   {showJungle &&
-                    jungleCreeps.map((creep) => (
+                    jungleCreeps.map((creep) => {
+                      const IconComponent = creep.icon
+                      return (
                       <div
                         key={creep.id}
                         className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
-                        style={{ left: `calc(${creep.x}% * ${scale})`, top: `calc(${creep.y}% * ${scale})`, ...transformStyle }}
-                      >
-                        <div className="w-8 h-8 bg-muted/80 rounded-full flex items-center justify-center border-2 border-border hover:border-primary transition-colors">
-                          <TreePine className="w-4 h-4 text-muted-foreground" />
+                          style={{ left: `calc(${creep.x}% * ${scale})`, top: `calc(${creep.y}% * ${scale})`, ...transformStyle }}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all ${jungleColorClasses[creep.color as keyof typeof jungleColorClasses]}`}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
+                              <div className="font-semibold text-sm mb-1">{creep.name}</div>
+                              <div className="text-muted-foreground mb-1 capitalize">{creep.type}</div>
+                              <div className="flex gap-2 text-xs">
+                                <span className="text-yellow-500">{creep.gold}G</span>
+                                <span className="text-blue-500">{creep.exp}XP</span>
+                                <span className="text-green-500">{creep.respawn}s</span>
                         </div>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="bg-card border border-border rounded px-2 py-1 text-xs whitespace-nowrap">
-                            <div className="font-semibold">{creep.name}</div>
-                            <div className="text-muted-foreground">
-                              {creep.gold}G • {creep.exp}XP • {creep.respawn}s
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                   {/* Map Objectives */}
                   {showObjectives &&
-                    mapObjectives.map((objective) => (
+                    mapObjectives.map((objective) => {
+                      const IconComponent = objective.icon
+                      return (
                       <div
                         key={objective.id}
                         className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
-                        style={{ left: `calc(${objective.x}% * ${scale})`, top: `calc(${objective.y}% * ${scale})`, ...transformStyle }}
-                      >
-                        <div className="w-10 h-10 bg-chart-1/20 rounded-full flex items-center justify-center border-2 border-chart-1 hover:bg-chart-1/30 transition-colors">
-                          <Crown className="w-5 h-5 text-chart-1" />
+                          style={{ left: `calc(${objective.x}% * ${scale})`, top: `calc(${objective.y}% * ${scale})`, ...transformStyle }}
+                        >
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all ${objectiveColorClasses[objective.color as keyof typeof objectiveColorClasses]} ${priorityClasses[objective.priority as keyof typeof priorityClasses]}`}>
+                            <IconComponent className="w-6 h-6" />
+                          </div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-lg min-w-48">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="font-semibold text-sm">{objective.name}</div>
+                                <Badge variant="outline" className="text-xs capitalize">{objective.priority}</Badge>
                         </div>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="bg-card border border-border rounded px-2 py-1 text-xs whitespace-nowrap">
-                            <div className="font-semibold">{objective.name}</div>
-                            <div className="text-muted-foreground">
-                              {objective.reward} • {objective.respawn}s
+                              <div className="text-muted-foreground mb-1">{objective.reward}</div>
+                              <div className="text-green-500 text-xs">Respawn: {objective.respawn}s</div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                   {/* Rotation Paths */}
                   {showPaths && heroRotation && (
@@ -409,44 +578,79 @@ export default function MapTacticsPage() {
 
                   {/* View controls */}
                   <div className="absolute top-4 right-4 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s * 1.2, 0.6, 3))}>+
+                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s * 1.2, 0.6, 3))} className="hidden sm:flex">
+                      +
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s / 1.2, 0.6, 3))}>-
+                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s / 1.2, 0.6, 3))} className="hidden sm:flex">
+                      -
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={resetView}>Reset
+                    <Button size="sm" variant="secondary" onClick={resetView} className="text-xs sm:text-sm">
+                      Reset
+                    </Button>
+                  </div>
+                  
+                  {/* Mobile zoom controls */}
+                  <div className="absolute top-4 left-4 flex gap-2 sm:hidden">
+                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s * 1.2, 0.6, 3))} className="w-8 h-8 p-0">
+                      +
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setScale((s) => clamp(s / 1.2, 0.6, 3))} className="w-8 h-8 p-0">
+                      -
                     </Button>
                   </div>
 
                   {/* Legend */}
-                  <div className="absolute bottom-4 right-4 bg-card/90 rounded-lg border border-border p-3 text-xs space-y-2 w-56">
-                    <div className="font-semibold text-sm mb-1">Legend</div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-chart-3" />
-                      <span>EXP Lane</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-chart-1" />
-                      <span>Gold Lane</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-primary" />
-                      <span>Mid Lane</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full border-2 border-border flex items-center justify-center bg-muted/80">
-                        <span className="block w-2 h-2 bg-muted-foreground rounded" />
+                  <div className="absolute bottom-4 right-4 bg-card/95 rounded-lg border border-border p-3 text-xs space-y-2 w-64 shadow-lg">
+                    <div className="font-semibold text-sm mb-2">Legend</div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-chart-3" />
+                        <span>EXP Lane</span>
                       </div>
-                      <span>Jungle Camp</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full border-2 border-chart-1 flex items-center justify-center bg-chart-1/20">
-                        <span className="block w-2 h-2 bg-chart-1 rounded" />
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-chart-1" />
+                        <span>Gold Lane</span>
                       </div>
-                      <span>Objective</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-primary" />
+                        <span>Mid Lane</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-0.5 bg-primary/70" />
-                      <span>Rotation Path</span>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Jungle Camps</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-4 h-4 rounded-full bg-blue-500/20 border border-blue-500 flex items-center justify-center">
+                          <Shield className="w-2 h-2 text-blue-500" />
+                        </div>
+                        <span>Buff</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-purple-500/20 border border-purple-500 flex items-center justify-center">
+                          <Gem className="w-2 h-2 text-purple-500" />
+                        </div>
+                        <span>Neutral</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Objectives</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-4 h-4 rounded-full bg-yellow-500/20 border border-yellow-500 flex items-center justify-center ring-1 ring-yellow-400/50">
+                          <Crown className="w-2 h-2 text-yellow-500" />
+                        </div>
+                        <span>Critical</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center ring-1 ring-emerald-400/50">
+                          <Shield className="w-2 h-2 text-emerald-500" />
+                        </div>
+                        <span>High Priority</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-0.5 bg-primary/70" />
+                        <span>Rotation Path</span>
+                      </div>
                     </div>
                   </div>
 

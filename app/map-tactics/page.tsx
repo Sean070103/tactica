@@ -492,17 +492,26 @@ export default function MapTacticsPage() {
                         className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
                           style={{ left: `calc(${creep.x}% * ${scale})`, top: `calc(${creep.y}% * ${scale})`, ...transformStyle }}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all ${jungleColorClasses[creep.color as keyof typeof jungleColorClasses]}`}>
-                            <IconComponent className="w-5 h-5" />
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all duration-300 hover:shadow-lg ${jungleColorClasses[creep.color as keyof typeof jungleColorClasses]}`}>
+                            <IconComponent className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
                           </div>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+                            <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs shadow-xl">
                               <div className="font-semibold text-sm mb-1">{creep.name}</div>
                               <div className="text-muted-foreground mb-1 capitalize">{creep.type}</div>
                               <div className="flex gap-2 text-xs">
-                                <span className="text-yellow-500">{creep.gold}G</span>
-                                <span className="text-blue-500">{creep.exp}XP</span>
-                                <span className="text-green-500">{creep.respawn}s</span>
+                                <span className="text-yellow-500 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                                  {creep.gold}G
+                                </span>
+                                <span className="text-blue-500 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                  {creep.exp}XP
+                                </span>
+                                <span className="text-green-500 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                  {creep.respawn}s
+                                </span>
                         </div>
                             </div>
                           </div>
@@ -520,17 +529,20 @@ export default function MapTacticsPage() {
                         className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
                           style={{ left: `calc(${objective.x}% * ${scale})`, top: `calc(${objective.y}% * ${scale})`, ...transformStyle }}
                         >
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all ${objectiveColorClasses[objective.color as keyof typeof objectiveColorClasses]} ${priorityClasses[objective.priority as keyof typeof priorityClasses]}`}>
-                            <IconComponent className="w-6 h-6" />
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 hover:scale-110 transition-all duration-300 hover:shadow-lg ${objectiveColorClasses[objective.color as keyof typeof objectiveColorClasses]} ${priorityClasses[objective.priority as keyof typeof priorityClasses]}`}>
+                            <IconComponent className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" />
                           </div>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-lg min-w-48">
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+                            <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs shadow-xl min-w-48">
                               <div className="flex items-center gap-2 mb-1">
                                 <div className="font-semibold text-sm">{objective.name}</div>
                                 <Badge variant="outline" className="text-xs capitalize">{objective.priority}</Badge>
                         </div>
                               <div className="text-muted-foreground mb-1">{objective.reward}</div>
-                              <div className="text-green-500 text-xs">Respawn: {objective.respawn}s</div>
+                              <div className="text-green-500 text-xs flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                Respawn: {objective.respawn}s
+                              </div>
                             </div>
                           </div>
                         </div>

@@ -1433,18 +1433,33 @@ export default function DraftAssistantPage() {
                   {/* Chat */}
                   <div>
                     <h4 className="font-semibold mb-2">Team Chat</h4>
-                    <div className="border border-border rounded-lg h-48 overflow-y-auto p-3 space-y-2">
+                    <div className="border border-border rounded-lg h-48 overflow-y-auto p-3 space-y-2 bg-muted/20">
                       {chatMessages.map((message) => (
                         <div key={message.id} className={`text-sm ${message.type === 'system' ? 'text-muted-foreground italic' : ''}`}>
                           {message.type === 'system' ? (
-                            <div className="text-center text-xs text-muted-foreground">{message.message}</div>
+                            <div className="text-center text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                              {message.message}
+                            </div>
                           ) : (
-                            <div>
-                              <span className="font-semibold text-primary">{message.username}:</span> {message.message}
+                            <div className="bg-card/50 rounded-lg p-2 border border-border/50">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="font-semibold text-primary text-xs">{message.username}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(message.timestamp).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <div className="text-sm">{message.message}</div>
                             </div>
                           )}
                         </div>
                       ))}
+                      {chatMessages.length === 0 && (
+                        <div className="text-center text-muted-foreground text-sm py-8">
+                          <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>No messages yet. Start the conversation!</p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 mt-2">
                       <Input
@@ -1454,30 +1469,41 @@ export default function DraftAssistantPage() {
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         className="flex-1"
                       />
-                      <Button onClick={sendMessage} size="sm">
-                        Send
+                      <Button onClick={sendMessage} size="sm" disabled={!newMessage.trim()}>
+                        <MessageSquare className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
 
                   {/* Voice/Video Controls */}
                   <div className="flex items-center justify-center gap-4 p-3 bg-muted/30 rounded-lg">
-                    <Button
-                      variant={currentUser.isMuted ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={toggleMute}
-                    >
-                      {currentUser.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      variant={currentUser.isVideoOn ? "default" : "outline"}
-                      size="sm"
-                      onClick={toggleVideo}
-                    >
-                      {currentUser.isVideoOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                    </Button>
-                    <div className="text-sm text-muted-foreground">
-                      {currentUser.isMuted ? 'Muted' : 'Unmuted'} • {currentUser.isVideoOn ? 'Video On' : 'Video Off'}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={currentUser.isMuted ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={toggleMute}
+                        className="touch-manipulation"
+                      >
+                        {currentUser.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant={currentUser.isVideoOn ? "default" : "outline"}
+                        size="sm"
+                        onClick={toggleVideo}
+                        className="touch-manipulation"
+                      >
+                        {currentUser.isVideoOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <div className="text-sm text-muted-foreground text-center">
+                      <div className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${currentUser.isMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                        {currentUser.isMuted ? 'Muted' : 'Unmuted'}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${currentUser.isVideoOn ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                        {currentUser.isVideoOn ? 'Video On' : 'Video Off'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1496,9 +1522,9 @@ export default function DraftAssistantPage() {
             <CardDescription>Replace an ally pick and see the impact instantly</CardDescription>
           </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Select value={whatIfSlotIndex !== null ? String(whatIfSlotIndex) : undefined} onValueChange={(v) => setWhatIfSlotIndex(Number(v))}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full touch-manipulation">
                     <SelectValue placeholder="Select ally slot" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1509,7 +1535,7 @@ export default function DraftAssistantPage() {
                 </Select>
 
                 <Select value={whatIfHeroId !== null ? String(whatIfHeroId) : undefined} onValueChange={(v) => setWhatIfHeroId(Number(v))}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full touch-manipulation">
                     <SelectValue placeholder="Select replacement hero" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1519,7 +1545,7 @@ export default function DraftAssistantPage() {
                   </SelectContent>
                 </Select>
 
-                <Button onClick={simulateWhatIf} disabled={whatIfSlotIndex === null || whatIfHeroId === null}>
+                <Button onClick={simulateWhatIf} disabled={whatIfSlotIndex === null || whatIfHeroId === null} className="touch-manipulation">
                   Simulate
                 </Button>
               </div>
@@ -1960,7 +1986,7 @@ export default function DraftAssistantPage() {
                   <Button 
                     onClick={startSimulation} 
                     disabled={isSimulationMode}
-                    className="w-full h-12 sm:h-auto"
+                    className="w-full h-12 sm:h-auto touch-manipulation"
                   >
                     <Timer className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">Start Simulation</span>
@@ -1970,7 +1996,7 @@ export default function DraftAssistantPage() {
                     onClick={stopSimulation} 
                     variant="outline"
                     disabled={!isSimulationMode}
-                    className="w-full h-12 sm:h-auto"
+                    className="w-full h-12 sm:h-auto touch-manipulation"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">Stop</span>
@@ -1979,7 +2005,7 @@ export default function DraftAssistantPage() {
                   <Button 
                     onClick={resetDraft} 
                     variant="outline"
-                    className="w-full h-12 sm:h-auto"
+                    className="w-full h-12 sm:h-auto touch-manipulation"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">Reset Draft</span>
@@ -2001,13 +2027,16 @@ export default function DraftAssistantPage() {
               <CardContent>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
                   {draft.bannedHeroes.map((hero) => (
-                    <div key={hero.id} className="p-2 bg-destructive/10 rounded-lg border border-destructive/20 text-center">
-                      <div className="text-xs font-semibold">{hero.name}</div>
+                    <div key={hero.id} className="p-2 bg-destructive/10 rounded-lg border border-destructive/20 text-center hover:bg-destructive/15 transition-all duration-300 group">
+                      <div className="w-6 h-6 bg-gradient-to-br from-destructive/30 to-red-500/30 rounded-full flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform duration-300">
+                        <span className="text-xs font-bold text-destructive">{hero.name.charAt(0)}</span>
+                      </div>
+                      <div className="text-xs font-semibold group-hover:text-destructive transition-colors duration-300">{hero.name}</div>
                       <div className="text-xs text-muted-foreground">{hero.role}</div>
                     </div>
                   ))}
                   {Array.from({ length: 6 - draft.bannedHeroes.length }).map((_, index) => (
-                    <div key={index} className="p-2 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
+                    <div key={index} className="p-2 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground hover:border-destructive/30 transition-colors duration-300">
                       <X className="w-4 h-4 mx-auto mb-1" />
                       <div className="text-xs">Ban Slot</div>
                     </div>
@@ -2029,22 +2058,27 @@ export default function DraftAssistantPage() {
                   {draft.allyTeam.map((hero, index) => (
                     <div
                       key={hero.id}
-                      className="flex items-center justify-between p-3 bg-chart-3/10 rounded-lg border border-chart-3/20"
+                      className="flex items-center justify-between p-3 bg-chart-3/10 rounded-lg border border-chart-3/20 hover:bg-chart-3/15 transition-all duration-300 group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-chart-3/20 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-chart-3/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                           <span className="text-xs font-bold text-chart-3">{index + 1}</span>
                         </div>
-                        <div>
-                          <div className="font-semibold">{hero.name}</div>
-                          <div className="text-xs text-muted-foreground">{hero.role}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-gradient-to-br from-chart-3/30 to-primary/30 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-chart-3">{hero.name.charAt(0)}</span>
+                          </div>
+                          <div>
+                            <div className="font-semibold group-hover:text-chart-3 transition-colors duration-300">{hero.name}</div>
+                            <div className="text-xs text-muted-foreground">{hero.role}</div>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs group-hover:bg-chart-3/20 transition-colors duration-300">
                           {hero.tier}
                         </Badge>
-                        <Button variant="ghost" size="sm" onClick={() => removeHeroFromTeam(hero.id, "ally")}>
+                        <Button variant="ghost" size="sm" onClick={() => removeHeroFromTeam(hero.id, "ally")} className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300">
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
@@ -2074,22 +2108,27 @@ export default function DraftAssistantPage() {
                   {draft.enemyTeam.map((hero, index) => (
                     <div
                       key={hero.id}
-                      className="flex items-center justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20"
+                      className="flex items-center justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20 hover:bg-destructive/15 transition-all duration-300 group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-destructive/20 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-destructive/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                           <span className="text-xs font-bold text-destructive">{index + 1}</span>
                         </div>
-                        <div>
-                          <div className="font-semibold">{hero.name}</div>
-                          <div className="text-xs text-muted-foreground">{hero.role}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-gradient-to-br from-destructive/30 to-red-500/30 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-destructive">{hero.name.charAt(0)}</span>
+                          </div>
+                          <div>
+                            <div className="font-semibold group-hover:text-destructive transition-colors duration-300">{hero.name}</div>
+                            <div className="text-xs text-muted-foreground">{hero.role}</div>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs group-hover:bg-destructive/20 transition-colors duration-300">
                           {hero.tier}
                         </Badge>
-                        <Button variant="ghost" size="sm" onClick={() => removeHeroFromTeam(hero.id, "enemy")}>
+                        <Button variant="ghost" size="sm" onClick={() => removeHeroFromTeam(hero.id, "enemy")} className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300">
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
@@ -2139,25 +2178,32 @@ export default function DraftAssistantPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
                   {filteredHeroes.map((hero) => (
-                    <div key={hero.id} className="p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors border border-border/50">
+                    <div key={hero.id} className="p-3 bg-muted/50 rounded-lg hover:bg-muted transition-all duration-300 border border-border/50 hover:border-primary/30 hover:shadow-md group">
                       <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="text-sm font-semibold">{hero.name}</div>
-                          <div className="text-xs text-muted-foreground">{hero.role} • {hero.lane}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <div className="w-8 h-8 bg-gradient-to-br from-primary/30 to-chart-3/30 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-primary">{hero.name.charAt(0)}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold group-hover:text-primary transition-colors duration-300">{hero.name}</div>
+                            <div className="text-xs text-muted-foreground">{hero.role} • {hero.lane}</div>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <Badge 
                             variant="outline" 
-                            className={`text-xs ${
-                              hero.tier === 'S+' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
-                              hero.tier === 'S' ? 'bg-orange-500/20 text-orange-500 border-orange-500/30' :
-                              hero.tier === 'A' ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' :
-                              'bg-gray-500/20 text-gray-500 border-gray-500/30'
+                            className={`text-xs transition-all duration-300 ${
+                              hero.tier === 'S+' ? 'bg-red-500/20 text-red-500 border-red-500/30 group-hover:bg-red-500/30' :
+                              hero.tier === 'S' ? 'bg-orange-500/20 text-orange-500 border-orange-500/30 group-hover:bg-orange-500/30' :
+                              hero.tier === 'A' ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30 group-hover:bg-yellow-500/30' :
+                              'bg-gray-500/20 text-gray-500 border-gray-500/30 group-hover:bg-gray-500/30'
                             }`}
                           >
                             {hero.tier}
                           </Badge>
-                          <div className="text-xs text-muted-foreground">{hero.winRate}% WR</div>
+                          <div className="text-xs text-muted-foreground group-hover:text-primary transition-colors duration-300">{hero.winRate}% WR</div>
                         </div>
                       </div>
                       
@@ -2167,12 +2213,12 @@ export default function DraftAssistantPage() {
                       
                       <div className="flex items-center justify-between mb-2 text-xs">
                         <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {hero.powerSpike}
+                          <Clock className="w-3 h-3 text-chart-3" />
+                          <span className="text-muted-foreground">{hero.powerSpike}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3" />
-                          {hero.difficulty}
+                          <Star className="w-3 h-3 text-yellow-500" />
+                          <span className="text-muted-foreground">{hero.difficulty}</span>
                         </div>
                       </div>
                       
@@ -2180,7 +2226,7 @@ export default function DraftAssistantPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 text-xs h-8 sm:h-7 bg-transparent hover:bg-chart-3/10 hover:border-chart-3/30 touch-manipulation"
+                          className="flex-1 text-xs h-8 sm:h-7 bg-transparent hover:bg-chart-3/10 hover:border-chart-3/30 touch-manipulation transition-all duration-300 hover:scale-105"
                           onClick={() => addHeroToTeam(hero, "ally")}
                           disabled={draft.allyTeam.length >= 5}
                         >
@@ -2190,7 +2236,7 @@ export default function DraftAssistantPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 text-xs h-8 sm:h-7 bg-transparent hover:bg-destructive/10 hover:border-destructive/30 touch-manipulation"
+                          className="flex-1 text-xs h-8 sm:h-7 bg-transparent hover:bg-destructive/10 hover:border-destructive/30 touch-manipulation transition-all duration-300 hover:scale-105"
                           onClick={() => addHeroToTeam(hero, "enemy")}
                           disabled={draft.enemyTeam.length >= 5}
                         >
@@ -2200,7 +2246,7 @@ export default function DraftAssistantPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs h-8 sm:h-7 w-8 sm:w-auto bg-transparent hover:bg-red-500/10 hover:border-red-500/30 touch-manipulation"
+                          className="text-xs h-8 sm:h-7 w-8 sm:w-auto bg-transparent hover:bg-red-500/10 hover:border-red-500/30 touch-manipulation transition-all duration-300 hover:scale-105"
                           onClick={() => banHero(hero)}
                           disabled={draft.bannedHeroes.length >= 6}
                           title="Ban Hero"
@@ -2433,7 +2479,7 @@ export default function DraftAssistantPage() {
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <Button 
-                    className="w-full h-12 sm:h-auto" 
+                    className="w-full h-12 sm:h-auto touch-manipulation" 
                     onClick={saveDraft}
                     disabled={draft.allyTeam.length === 0 && draft.enemyTeam.length === 0}
                   >
@@ -2442,7 +2488,7 @@ export default function DraftAssistantPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full h-12 sm:h-auto bg-transparent"
+                    className="w-full h-12 sm:h-auto bg-transparent touch-manipulation"
                     onClick={saveAsTemplate}
                     disabled={draft.allyTeam.length === 0 && draft.enemyTeam.length === 0}
                   >
@@ -2453,7 +2499,7 @@ export default function DraftAssistantPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 bg-transparent"
+                      className="h-10 bg-transparent touch-manipulation"
                       onClick={shareDraft}
                       disabled={draft.allyTeam.length === 0 && draft.enemyTeam.length === 0}
                     >
@@ -2463,7 +2509,7 @@ export default function DraftAssistantPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 bg-transparent"
+                      className="h-10 bg-transparent touch-manipulation"
                       onClick={exportDraft}
                       disabled={draft.allyTeam.length === 0 && draft.enemyTeam.length === 0}
                     >
@@ -2473,7 +2519,7 @@ export default function DraftAssistantPage() {
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full h-12 sm:h-auto bg-transparent"
+                    className="w-full h-12 sm:h-auto bg-transparent touch-manipulation"
                     onClick={resetDraft}
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />

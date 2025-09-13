@@ -432,29 +432,33 @@ export default function ProStrategiesPage() {
               {filteredStrategies.map((strategy) => (
                 <Card
                   key={strategy.id}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  className="cursor-pointer hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
                   onClick={() => setSelectedStrategy(strategy)}
                 >
                   <CardContent className="p-0">
-                    <div className="relative aspect-video">
+                    <div className="relative aspect-video overflow-hidden">
                       <img
                         src={strategy.thumbnail || "/placeholder.svg"}
                         alt={strategy.title}
-                        className="w-full h-full object-cover rounded-t-lg"
+                        className="w-full h-full object-cover rounded-t-lg group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Play className="w-12 h-12 text-white" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="w-16 h-16 bg-primary/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                          <Play className="w-8 h-8 text-white ml-1" />
+                        </div>
                       </div>
-                      <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs text-white">
+                      <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
                         {strategy.duration}
                       </div>
                       <div className="absolute bottom-2 left-2">
-                        <Badge className={getStrategyTypeColor(strategy.strategyType)}>{strategy.strategyType}</Badge>
+                        <Badge className={`${getStrategyTypeColor(strategy.strategyType)} group-hover:scale-105 transition-transform duration-300`}>
+                          {strategy.strategyType}
+                        </Badge>
                       </div>
                     </div>
                   </CardContent>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg line-clamp-2">{strategy.title}</CardTitle>
+                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors duration-300">{strategy.title}</CardTitle>
                     <CardDescription>
                       {strategy.team} vs {strategy.opponent}
                     </CardDescription>
@@ -472,12 +476,12 @@ export default function ProStrategiesPage() {
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {strategy.heroes.slice(0, 3).map((hero, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge key={index} variant="outline" className="text-xs hover:bg-primary/10 transition-colors duration-300">
                           {hero}
                         </Badge>
                       ))}
                       {strategy.heroes.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs hover:bg-primary/10 transition-colors duration-300">
                           +{strategy.heroes.length - 3}
                         </Badge>
                       )}
